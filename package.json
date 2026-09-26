@@ -1,0 +1,63 @@
+{
+  "name": "food-plan",
+  "productName": "FoodPlan",
+  "version": "0.1.0",
+  "description": "Weekly meal planner for runners with automatic macro/micro nutrient tracking",
+  "main": "electron/main.cjs",
+  "author": "mihelb",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "start": "npm run build && electron .",
+    "electron": "electron .",
+    "test": "vitest run",
+    "dist": "npm run build && electron-builder --linux AppImage deb",
+    "dev:electron": "VITE_DEV_SERVER_URL=http://localhost:5173 electron ."
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  },
+  "build": {
+    "appId": "io.github.mihelb.foodplan",
+    "productName": "FoodPlan",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "build/icon.png",
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "icon": "build/icon.png",
+      "synopsis": "Meal planner for runners with macro & micronutrient tracking",
+      "maintainer": "mihelb <mihelb@users.noreply.github.com>",
+      "syncDesktopName": true
+    },
+    "deb": {
+      "depends": []
+    }
+  },
+  "homepage": "https://github.com/mihelb/food-plan",
+  "desktopName": "foodplan.desktop"
+}
