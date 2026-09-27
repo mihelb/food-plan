@@ -1,9 +1,10 @@
 import { useMemo, useState, type DragEvent, type ReactNode } from 'react';
 import type { Mutate } from '../App';
-import type { AppState, DayPlan, PlanEntry, SlotKey } from '../lib/types';
+import type { AppState, DayPlan, NutrientMap, PlanEntry, SlotKey } from '../lib/types';
 import { SLOTS } from '../lib/types';
 import { addDays, formatDay, fromIso, today, weekDates, weekStart } from '../lib/dates';
 import {
+  addInto,
   activeKcalFor,
   entryName,
   ingredientGrams,
@@ -11,11 +12,12 @@ import {
   resolveDay,
   weekMicroStatus,
   type DayResult,
+  type MacroTargets,
   type ResolvedEntry,
 } from '../lib/calc';
 import { MICRO_KEYS, UPPER_LIMITS } from '../lib/nutrients';
 import { newId } from '../lib/storage';
-import { MacroChart, MicroChart } from './Charts';
+import { MacroChart, MicroChart, WeeklyMacroTable, type WeekMacroDay } from './Charts';
 import { Modal } from './Modal';
 import { NutrientTable } from './NutrientTable';
 
@@ -110,6 +112,24 @@ export function Planner({ state, mutate, goTo }: Props) {
       for (const d of dates) if (s.days[d]) s.days[d].slots = {};
     });
   }
+
+  const weekDays: WeekMacroDay[] = dates.map((d) => {
+    const f = formatDay(d);
+    return { date: d, label: `${f.weekday} ${f.date}`, totals: results[d].totals, targets: results[d].targets, planned: results[d].entries.length > 0 };
+  });
+  const week = {
+    totals: weekDays.reduce<NutrientMap>((acc, d) => addInto(acc, d.totals), {}),
+    targets: weekDays.reduce<MacroTargets>(
+      (acc, d) => ({
+        kcal: acc.kcal + d.targets.kcal,
+        protein: acc.protein + d.targets.protein,
+        carbs: acc.carbs + d.targets.carbs,
+        fat: acc.fat + d.targets.fat,
+        fiber: acc.fiber + d.targets.fiber,
+      }),
+      { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+    ),
+  };
 
   const sel = results[selectedDate];
   const selLabel = formatDay(selectedDate);
@@ -279,12 +299,23 @@ export function Planner({ state, mutate, goTo }: Props) {
         </div>
 
         <div className="charts">
-          <div className="panel">
-            <h3>
-              Daily macros — {selLabel.weekday} {selLabel.date}
-            </h3>
-            <p className="small muted">Click a day header to switch. Bars run to 150 %; the line marks the target.</p>
-            <MacroChart totals={sel.totals} targets={sel.targets} weightKg={state.profile.weightKg} />
+          <div className="chart-column">
+            <div className="panel">
+              <h3>
+                Daily macros — {selLabel.weekday} {selLabel.date}
+              </h3>
+              <p className="small muted">Click a day header to switch. Bars run to 150 %; the line marks the target.</p>
+              <MacroChart totals={sel.totals} targets={sel.targets} weightKg={state.profile.weightKg} />
+            </div>
+            <div className="panel">
+              <h3>Weekly macros</h3>
+              <p className="small muted">
+                Whole week vs. the sum of each day's target, so a light day can be balanced by a heavier one. g/kg values are daily averages.
+              </p>
+              <MacroChart totals={week.totals} targets={week.targets} weightKg={state.profile.weightKg} days={dates.length} />
+              <h4>Difference to target per day</h4>
+              <WeeklyMacroTable days={weekDays} selected={selectedDate} onSelect={setSelected} />
+            </div>
           </div>
           <div className="panel">
             <h3>Weekly micronutrients</h3>

@@ -52,6 +52,14 @@ function BarRow({ label, value, target, unit, status, note, alert }: BarRowProps
   );
 }
 
+const MACRO_ROWS: { key: keyof MacroTargets; label: string; unit: string; overIsFine: boolean }[] = [
+  { key: 'kcal', label: 'Energy', unit: 'kcal', overIsFine: false },
+  { key: 'carbs', label: 'Carbs', unit: 'g', overIsFine: false },
+  { key: 'protein', label: 'Protein', unit: 'g', overIsFine: true },
+  { key: 'fat', label: 'Fat', unit: 'g', overIsFine: false },
+  { key: 'fiber', label: 'Fiber', unit: 'g', overIsFine: true },
+];
+
 function macroStatus(pct: number, overIsFine: boolean): Status {
   if (pct < 0.8) return 'critical';
   if (pct < 0.95) return 'warning';
@@ -59,21 +67,17 @@ function macroStatus(pct: number, overIsFine: boolean): Status {
   return 'good';
 }
 
-export function MacroChart({ totals, targets, weightKg }: { totals: NutrientMap; targets: MacroTargets; weightKg: number }) {
-  const rows: { key: keyof MacroTargets; label: string; unit: string; overIsFine: boolean }[] = [
-    { key: 'kcal', label: 'Energy', unit: 'kcal', overIsFine: false },
-    { key: 'carbs', label: 'Carbs', unit: 'g', overIsFine: false },
-    { key: 'protein', label: 'Protein', unit: 'g', overIsFine: true },
-    { key: 'fat', label: 'Fat', unit: 'g', overIsFine: false },
-    { key: 'fiber', label: 'Fiber', unit: 'g', overIsFine: true },
-  ];
+/** Macro bars. `days` > 1 shows g/kg as a per-day average (weekly view). */
+export function MacroChart({ totals, targets, weightKg, days = 1 }: { totals: NutrientMap; targets: MacroTargets; weightKg: number; days?: number }) {
+  const rows = MACRO_ROWS;
   return (
     <div className="chart">
       {rows.map((r) => {
         const value = totals[r.key] ?? 0;
         const target = targets[r.key];
         const pct = target > 0 ? value / target : 0;
-        const perKg = r.key === 'carbs' || r.key === 'protein' ? ` · ${(value / weightKg).toFixed(1)} g/kg` : '';
+        const perKg =
+          r.key === 'carbs' || r.key === 'protein' ? ` · ${(value / weightKg / days).toFixed(1)} g/kg` : '';
         return (
           <BarRow
             key={r.key}
@@ -136,5 +140,86 @@ function ChartLegend() {
         <i className="target-mark" /> target
       </span>
     </div>
+  );
+}
+
+export interface WeekMacroDay {
+  date: string;
+  label: string;
+  totals: NutrientMap;
+  targets: MacroTargets;
+  planned: boolean;
+}
+
+/**
+ * Day-by-day list of how far each macro is from its target (+ over / − under),
+ * with a week total row, so a light day can be balanced by a heavier one.
+ */
+export function WeeklyMacroTable({ days, onSelect, selected }: { days: WeekMacroDay[]; onSelect: (date: string) => void; selected: string }) {
+  const week = days.reduce(
+    (acc, d) => {
+      for (const r of MACRO_ROWS) {
+        acc.totals[r.key] = (acc.totals[r.key] ?? 0) + (d.totals[r.key] ?? 0);
+        acc.targets[r.key] += d.targets[r.key];
+      }
+      return acc;
+    },
+    { totals: {} as NutrientMap, targets: { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 } as MacroTargets },
+  );
+
+  const cell = (value: number, target: number, row: (typeof MACRO_ROWS)[number]) => {
+    const diff = value - target;
+    const pct = target > 0 ? value / target : 0;
+    const status = macroStatus(pct, row.overIsFine);
+    const meta = STATUS_META[status];
+    const sign = diff > 0 ? '+' : diff < 0 ? '−' : '±';
+    return (
+      <td
+        key={row.key}
+        className="num"
+        title={`${row.label}: ${Math.round(value)} of ${Math.round(target)} ${row.unit} (${Math.round(pct * 100)} %) — ${meta.label}`}
+      >
+        <span className={`status-text-${status}`} aria-label={meta.label}>
+          {meta.icon}
+        </span>{' '}
+        {sign}
+        {Math.abs(Math.round(diff))}
+      </td>
+    );
+  };
+
+  return (
+    <table className="table compact week-macros">
+      <thead>
+        <tr>
+          <th>Day</th>
+          {MACRO_ROWS.map((r) => (
+            <th key={r.key} className="num">
+              {r.label} <span className="muted">({r.unit})</span>
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {days.map((d) => (
+          <tr key={d.date} className={d.date === selected ? 'selected' : ''} onClick={() => onSelect(d.date)}>
+            <td>{d.label}</td>
+            {d.planned ? (
+              MACRO_ROWS.map((r) => cell(d.totals[r.key] ?? 0, d.targets[r.key], r))
+            ) : (
+              <td colSpan={MACRO_ROWS.length} className="muted small">
+                nothing planned
+              </td>
+            )}
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th>Week</th>
+          {MACRO_ROWS.map((r) => cell(week.totals[r.key] ?? 0, week.targets[r.key], r))}
+        </tr>
+      </tfoot>
+    </table>
   );
 }

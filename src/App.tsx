@@ -98,19 +98,6 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="theme-switch" role="radiogroup" aria-label="Theme">
-          {(['light', 'dark', 'system'] as const).map((t) => (
-            <button
-              key={t}
-              role="radio"
-              aria-checked={theme === t}
-              className={theme === t ? 'on' : ''}
-              onClick={() => mutate((s) => void (s.profile.theme = t))}
-            >
-              {t === 'light' ? '☀ Light' : t === 'dark' ? '☾ Dark' : 'Auto'}
-            </button>
-          ))}
-        </div>
         {saveError && <div className="save-error">Could not save: {saveError}</div>}
       </header>
       <main className="content">

@@ -25,6 +25,8 @@ minerals over the week.
 - **Automatic portion scaling**: switch on **⚖ auto** on one or more meals in a day. Their quantities
   are scaled by a common factor (between 0.25× and 4×) so the day lands exactly on its kcal target.
   Click a meal to see the scaled gram amounts to prepare.
+- **Weekly macros**: the week's total vs. the sum of each day's target, plus a day-by-day list of
+  how far over (+) or under (−) each macro is, so a light day can be balanced by a heavier one.
 - **Daily macro chart**: energy, carbs, protein, fat and fiber against targets for the selected day.
   Protein is set in g/kg and fat as a % of kcal; carbs fill the remaining energy, so they rise with
   training load.
@@ -34,7 +36,7 @@ minerals over the week.
 - **Supplements** with per-dose nutrients. They count towards the charts.
 - Defaults are the US National Academies RDA/AI values for your sex and age, and you can override any
   micronutrient target.
-- Light / dark / auto (follow desktop) theme switch in the top bar.
+- Light / dark / auto (follow desktop) theme, set under Profile & targets.
 - JSON export/import for backups.
 
 ## Install / run

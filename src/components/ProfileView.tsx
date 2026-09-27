@@ -50,6 +50,17 @@ export function ProfileView({ state, mutate }: { state: AppState; mutate: Mutate
   return (
     <div className="profile">
       <section className="panel">
+        <h2>Appearance</h2>
+        <div className="theme-switch" role="radiogroup" aria-label="Theme">
+          {(['light', 'dark', 'system'] as const).map((t) => (
+            <button key={t} role="radio" aria-checked={p.theme === t} className={p.theme === t ? 'on' : ''} onClick={() => set('theme', t)}>
+              {t === 'light' ? '☀ Light' : t === 'dark' ? '☾ Dark' : 'Auto (follow desktop)'}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel">
         <h2>About you</h2>
         <div className="form-grid">
           <label>
