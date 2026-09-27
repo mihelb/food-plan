@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppState } from './lib/types';
-import { loadState, saveState } from './lib/storage';
+import { loadState, saveState, saveStateNow } from './lib/storage';
 import { Planner } from './components/Planner';
 import { RecipesView } from './components/RecipesView';
 import { FoodsView } from './components/FoodsView';
@@ -36,12 +36,34 @@ export default function App() {
     if (!state) return;
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
+      saveTimer.current = undefined;
       saveState(state).then(
         () => setSaveError(null),
         (e) => setSaveError(String(e)),
       );
     }, 400);
   }, [state]);
+
+  // Flush a pending save when the window closes.
+  const latest = useRef<AppState | null>(null);
+  latest.current = state;
+  useEffect(() => {
+    const flush = () => {
+      if (saveTimer.current !== undefined && latest.current) {
+        window.clearTimeout(saveTimer.current);
+        saveTimer.current = undefined;
+        saveStateNow(latest.current);
+      }
+    };
+    window.addEventListener('beforeunload', flush);
+    return () => window.removeEventListener('beforeunload', flush);
+  }, []);
+
+  const theme = state?.profile.theme ?? 'system';
+  useEffect(() => {
+    if (theme === 'system') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   const mutate: Mutate = useCallback((fn) => {
     setState((prev) => {
@@ -76,6 +98,19 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <div className="theme-switch" role="radiogroup" aria-label="Theme">
+          {(['light', 'dark', 'system'] as const).map((t) => (
+            <button
+              key={t}
+              role="radio"
+              aria-checked={theme === t}
+              className={theme === t ? 'on' : ''}
+              onClick={() => mutate((s) => void (s.profile.theme = t))}
+            >
+              {t === 'light' ? '☀ Light' : t === 'dark' ? '☾ Dark' : 'Auto'}
+            </button>
+          ))}
+        </div>
         {saveError && <div className="save-error">Could not save: {saveError}</div>}
       </header>
       <main className="content">

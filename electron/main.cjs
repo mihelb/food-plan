@@ -47,6 +47,20 @@ ipcMain.handle('state:save', (_e, state) => {
   return saveChain;
 });
 
+// Synchronous save for window close: flushes the last edit before the app quits.
+ipcMain.on('state:saveSync', (e, state) => {
+  try {
+    const file = DATA_FILE();
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(`${file}.tmp`, JSON.stringify(state, null, 1));
+    fs.renameSync(`${file}.tmp`, file);
+    e.returnValue = true;
+  } catch (err) {
+    console.error('Could not save on close:', err);
+    e.returnValue = false;
+  }
+});
+
 async function writeState(state) {
   const file = DATA_FILE();
   const tmp = `${file}.tmp`;

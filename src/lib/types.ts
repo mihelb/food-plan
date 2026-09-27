@@ -93,6 +93,8 @@ export interface Profile {
   /** Micro targets overriding the DRI defaults (canonical units). */
   microOverrides: NutrientMap;
   usdaApiKey: string;
+  /** Colour theme; 'system' follows the desktop setting. */
+  theme: 'system' | 'light' | 'dark';
 }
 
 export interface AppState {

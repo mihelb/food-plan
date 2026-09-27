@@ -11,6 +11,7 @@ export const DEFAULT_PROFILE: Profile = {
   activityFromPreviousDay: true,
   microOverrides: {},
   usdaApiKey: 'DEMO_KEY',
+  theme: 'system',
 };
 
 export function emptyState(): AppState {
@@ -35,6 +36,7 @@ export function normalizeState(raw: unknown): AppState {
 interface Bridge {
   loadState(): Promise<unknown>;
   saveState(state: AppState): Promise<void>;
+  saveStateSync(state: AppState): void;
   fetchJson(url: string): Promise<unknown>;
 }
 
@@ -63,6 +65,18 @@ export async function saveState(state: AppState): Promise<void> {
     localStorage.setItem(LS_KEY, JSON.stringify(state));
   } catch {
     /* storage unavailable: keep working in memory */
+  }
+}
+
+/** Blocking save used when the window closes, so the last edit is never lost. */
+export function saveStateNow(state: AppState): void {
+  if (window.foodplan) window.foodplan.saveStateSync(state);
+  else {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+    } catch {
+      /* ignore */
+    }
   }
 }
 

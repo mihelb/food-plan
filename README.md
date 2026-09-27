@@ -34,6 +34,7 @@ minerals over the week.
 - **Supplements** with per-dose nutrients. They count towards the charts.
 - Defaults are the US National Academies RDA/AI values for your sex and age, and you can override any
   micronutrient target.
+- Light / dark / auto (follow desktop) theme switch in the top bar.
 - JSON export/import for backups.
 
 ## Install / run

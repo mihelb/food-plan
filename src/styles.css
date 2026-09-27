@@ -21,8 +21,9 @@
   --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 2px 8px rgb(0 0 0 / 0.04);
   color-scheme: light;
 }
+/* Dark theme: follows the system unless the user picked Light or Dark explicitly. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #151514;
     --surface: #1f1f1d;
     --surface-2: #292927;
@@ -41,6 +42,25 @@
     --shadow: none;
     color-scheme: dark;
   }
+}
+:root[data-theme='dark'] {
+  --bg: #151514;
+  --surface: #1f1f1d;
+  --surface-2: #292927;
+  --border: #3a3a37;
+  --ink: #ecebe6;
+  --ink-2: #bdbcb5;
+  --muted: #8f8e88;
+  --accent: #6ea2ff;
+  --accent-soft: #1f2e4a;
+  --recipe: #1e2a3d;
+  --recipe-border: #34507c;
+  --supp: #2b2238;
+  --supp-border: #4f3b6e;
+  --track: #2e2e2b;
+  --danger: #ff8a80;
+  --shadow: none;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -102,7 +122,10 @@ input.overridden { border-color: var(--accent); background: var(--accent-soft); 
 .tabs { display: flex; gap: 4px; }
 .tab { border: none; background: none; padding: 6px 12px; border-radius: 6px; color: var(--ink-2); }
 .tab.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.save-error { color: var(--critical); margin-left: auto; }
+.save-error { color: var(--critical); }
+.theme-switch { margin-left: auto; display: flex; gap: 2px; background: var(--surface-2); border-radius: 8px; padding: 2px; }
+.theme-switch button { border: none; background: none; padding: 3px 10px; font-size: 13px; color: var(--ink-2); }
+.theme-switch button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); font-weight: 600; }
 .content { flex: 1; overflow: auto; }
 
 /* Planner */
@@ -187,7 +210,8 @@ input.overridden { border-color: var(--accent); background: var(--accent-soft); 
 .status-text-warning { color: #b07a00; }
 .status-text-critical { color: var(--critical); }
 .status-text-over { color: var(--over); }
-@media (prefers-color-scheme: dark) { .status-text-warning { color: var(--warning); } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .status-text-warning { color: var(--warning); } }
+:root[data-theme='dark'] .status-text-warning { color: var(--warning); }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink-2); margin-top: 8px; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
