@@ -17,7 +17,7 @@ import {
 } from '../lib/calc';
 import { MICRO_KEYS, UPPER_LIMITS } from '../lib/nutrients';
 import { newId } from '../lib/storage';
-import { MacroChart, MicroChart, WeeklyMacroTable, type WeekMacroDay } from './Charts';
+import { MacroChart, MicroChart } from './Charts';
 import { Modal } from './Modal';
 import { NutrientTable } from './NutrientTable';
 
@@ -113,10 +113,7 @@ export function Planner({ state, mutate, goTo }: Props) {
     });
   }
 
-  const weekDays: WeekMacroDay[] = dates.map((d) => {
-    const f = formatDay(d);
-    return { date: d, label: `${f.weekday} ${f.date}`, totals: results[d].totals, targets: results[d].targets, planned: results[d].entries.length > 0 };
-  });
+  const weekDays = dates.map((d) => results[d]);
   const week = {
     totals: weekDays.reduce<NutrientMap>((acc, d) => addInto(acc, d.totals), {}),
     targets: weekDays.reduce<MacroTargets>(
@@ -313,8 +310,6 @@ export function Planner({ state, mutate, goTo }: Props) {
                 Whole week vs. the sum of each day's target, so a light day can be balanced by a heavier one. g/kg values are daily averages.
               </p>
               <MacroChart totals={week.totals} targets={week.targets} weightKg={state.profile.weightKg} days={dates.length} />
-              <h4>Difference to target per day</h4>
-              <WeeklyMacroTable days={weekDays} selected={selectedDate} onSelect={setSelected} />
             </div>
           </div>
           <div className="panel">
