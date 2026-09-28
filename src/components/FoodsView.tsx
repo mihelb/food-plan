@@ -5,6 +5,7 @@ import { newId } from '../lib/storage';
 import { FoodSearch } from './FoodSearch';
 import { Modal } from './Modal';
 import { NutrientEditor } from './NutrientEditor';
+import { DecimalInput } from './DecimalInput';
 
 export function FoodsView({ state, mutate }: { state: AppState; mutate: Mutate }) {
   const [filter, setFilter] = useState('');
@@ -123,7 +124,7 @@ function FoodEditor({ food, state, mutate, onDeleted }: { food: Food; state: App
         {usedIn.length > 0 && ` · used in ${usedIn.length} recipe(s)`}
       </p>
 
-      {state.profile.showPrices && <PriceEditor food={food} currency={state.profile.currency} onChange={(v) => edit((f) => (f.pricePer100g = v))} />}
+      {state.profile.showPrices && <PriceEditor food={food} currency={state.profile.currency} edit={edit} />}
 
       <h3>Portions</h3>
       <table className="table compact">
@@ -145,7 +146,7 @@ function FoodEditor({ food, state, mutate, onDeleted }: { food: Food; state: App
                 />
               </td>
               <td>
-                <input type="number" min={0} step="any" value={p.grams} onChange={(e) => edit((f) => (f.portions[i].grams = Math.max(0, Number(e.target.value))))} /> g
+                <DecimalInput required className="short" value={p.grams} onChange={(v) => edit((f) => (f.portions[i].grams = v ?? 0))} /> g
               </td>
               <td>
                 <button className="icon" aria-label="Remove portion" onClick={() => edit((f) => f.portions.splice(i, 1))}>
@@ -165,42 +166,42 @@ function FoodEditor({ food, state, mutate, onDeleted }: { food: Food; state: App
   );
 }
 
-/** Price per 100 g, with a helper to work it out from a package price and size. */
-function PriceEditor({ food, currency, onChange }: { food: Food; currency: string; onChange: (v: number | undefined) => void }) {
-  const [pkgPrice, setPkgPrice] = useState('');
-  const [pkgGrams, setPkgGrams] = useState('');
-  const derived = Number(pkgPrice) > 0 && Number(pkgGrams) > 0 ? (Number(pkgPrice) / Number(pkgGrams)) * 100 : null;
+/**
+ * Price per 100 g. It can also be entered as package price + package weight; those are stored
+ * with the food and the price per 100 g is calculated from them straight away.
+ */
+function PriceEditor({ food, currency, edit }: { food: Food; currency: string; edit: (fn: (f: Food) => void) => void }) {
+  const setPackage = (price: number | undefined, grams: number | undefined) =>
+    edit((f) => {
+      f.packagePrice = price;
+      f.packageGrams = grams;
+      if (price !== undefined && grams !== undefined && grams > 0) f.pricePer100g = Math.round((price / grams) * 100 * 10000) / 10000;
+    });
   return (
     <>
       <h3>Price</h3>
       <div className="price-row">
         <label className="inline">
           Price per 100 g
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            value={food.pricePer100g ?? ''}
+          <DecimalInput
+            value={food.pricePer100g}
             placeholder="unknown"
-            onChange={(e) => onChange(e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)))}
+            onChange={(v) =>
+              edit((f) => {
+                // Typing a price directly replaces a package-based one.
+                f.pricePer100g = v;
+                f.packagePrice = undefined;
+                f.packageGrams = undefined;
+              })
+            }
           />
           {currency}
         </label>
-        <span className="muted small">or from a package:</span>
-        <input type="number" min={0} step="0.01" className="short" placeholder="price" value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} />
+        <span className="muted small">or package:</span>
+        <DecimalInput className="short" placeholder="price" value={food.packagePrice} onChange={(v) => setPackage(v, food.packageGrams)} />
         <span className="small muted">{currency} for</span>
-        <input type="number" min={0} step="any" className="short" placeholder="grams" value={pkgGrams} onChange={(e) => setPkgGrams(e.target.value)} />
+        <DecimalInput className="short" placeholder="grams" value={food.packageGrams} onChange={(v) => setPackage(food.packagePrice, v)} />
         <span className="small muted">g</span>
-        <button
-          disabled={derived === null}
-          onClick={() => {
-            onChange(Math.round(derived! * 1000) / 1000);
-            setPkgPrice('');
-            setPkgGrams('');
-          }}
-        >
-          Use {derived !== null ? `${derived.toFixed(2)} ${currency}/100 g` : ''}
-        </button>
       </div>
     </>
   );

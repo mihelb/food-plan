@@ -1,9 +1,10 @@
-import { useRef, type ChangeEvent } from 'react';
+import { useRef } from 'react';
 import type { Mutate } from '../App';
 import type { AppState, Profile } from '../lib/types';
 import { macroTargets, microTargets } from '../lib/calc';
 import { NUTRIENT_BY_KEY, MICRO_KEYS, UPPER_LIMITS, defaultMicroTargets, formatAmount } from '../lib/nutrients';
 import { normalizeState } from '../lib/storage';
+import { DecimalInput } from './DecimalInput';
 
 /** Mifflin–St Jeor resting energy estimate. */
 function mifflin(p: Profile, heightCm: number): number {
@@ -18,9 +19,9 @@ export function ProfileView({ state, mutate }: { state: AppState; mutate: Mutate
       s.profile[k] = v;
     });
   const num = (k: 'age' | 'weightKg' | 'bmrKcal' | 'proteinPerKg' | 'fatPct') => ({
-    type: 'number' as const,
+    required: true,
     value: p[k],
-    onChange: (e: ChangeEvent<HTMLInputElement>) => set(k, Math.max(0, Number(e.target.value))),
+    onChange: (v: number | undefined) => set(k, v ?? p[k]),
   });
   const example = macroTargets(p, 600);
   const defaults = defaultMicroTargets(p.sex, p.age);
@@ -92,11 +93,11 @@ export function ProfileView({ state, mutate }: { state: AppState; mutate: Mutate
           </label>
           <label>
             Age
-            <input {...num('age')} min={14} max={100} />
+            <DecimalInput {...num('age')} />
           </label>
           <label>
             Weight (kg)
-            <input {...num('weightKg')} step={0.1} />
+            <DecimalInput {...num('weightKg')} />
           </label>
         </div>
       </section>
@@ -106,7 +107,7 @@ export function ProfileView({ state, mutate }: { state: AppState; mutate: Mutate
         <div className="form-grid">
           <label>
             Baseline / BMR (kcal per day)
-            <input {...num('bmrKcal')} step={10} />
+            <DecimalInput {...num('bmrKcal')} />
           </label>
           <label>
             Estimate from height (cm)
@@ -139,12 +140,12 @@ export function ProfileView({ state, mutate }: { state: AppState; mutate: Mutate
         <div className="form-grid">
           <label>
             Protein (g per kg body weight)
-            <input {...num('proteinPerKg')} step={0.1} />
+            <DecimalInput {...num('proteinPerKg')} />
             <span className="small muted">Endurance athletes: 1.2–2.0 g/kg</span>
           </label>
           <label>
             Fat (% of kcal)
-            <input {...num('fatPct')} step={1} min={10} max={60} />
+            <DecimalInput {...num('fatPct')} />
             <span className="small muted">Typical 20–35 %</span>
           </label>
         </div>
@@ -179,17 +180,14 @@ export function ProfileView({ state, mutate }: { state: AppState; mutate: Mutate
                   <td>{def.label}</td>
                   <td className="num muted">{defaults[k] !== undefined ? formatAmount(defaults[k]!, def.unit) : '–'}</td>
                   <td>
-                    <input
-                      type="number"
-                      min={0}
-                      step="any"
+                    <DecimalInput
                       className={override !== undefined ? 'overridden' : ''}
-                      value={override ?? ''}
+                      value={override}
                       placeholder={targets[k] !== undefined ? String(targets[k]) : ''}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         mutate((s) => {
-                          if (e.target.value === '') delete s.profile.microOverrides[k];
-                          else s.profile.microOverrides[k] = Math.max(0, Number(e.target.value));
+                          if (v === undefined) delete s.profile.microOverrides[k];
+                          else s.profile.microOverrides[k] = v;
                         })
                       }
                     />{' '}

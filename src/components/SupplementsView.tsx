@@ -3,6 +3,7 @@ import type { Mutate } from '../App';
 import type { AppState, Supplement } from '../lib/types';
 import { newId } from '../lib/storage';
 import { NutrientEditor } from './NutrientEditor';
+import { DecimalInput } from './DecimalInput';
 
 export function SupplementsView({ state, mutate }: { state: AppState; mutate: Mutate }) {
   const { showPrices, currency } = state.profile;
@@ -102,16 +103,7 @@ function SupplementEditor({ supp, mutate, onDeleted, showPrices, currency }: Edi
       {showPrices && (
         <label className="inline price-row">
           Price per {supp.doseLabel || 'dose'}
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            value={supp.pricePerDose ?? ''}
-            placeholder="unknown"
-            onChange={(e) =>
-              edit((s) => (s.pricePerDose = e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))))
-            }
-          />
+          <DecimalInput value={supp.pricePerDose} placeholder="unknown" onChange={(v) => edit((s) => (s.pricePerDose = v))} />
           {currency}
         </label>
       )}

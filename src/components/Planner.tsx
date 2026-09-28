@@ -25,6 +25,7 @@ import { newId } from '../lib/storage';
 import { MacroChart, MicroChart } from './Charts';
 import { Modal } from './Modal';
 import { NutrientTable } from './NutrientTable';
+import { DecimalInput } from './DecimalInput';
 
 type DragPayload =
   | { type: 'new'; kind: PlanEntry['kind']; refId: string }
@@ -391,13 +392,11 @@ function EntryChip({ state, resolved, onOpen, onDragStart, onAmount, onToggleAut
         </button>
       </div>
       <div className="chip-bottom">
-        <input
-          type="number"
-          min={0}
-          step={isRecipe ? 0.25 : 1}
+        <DecimalInput
+          required
           value={entry.amount}
           title={entry.auto ? 'Base amount — scaled automatically to hit the kcal target' : 'Amount'}
-          onChange={(e) => onAmount(Math.max(0, Number(e.target.value)))}
+          onChange={(v) => onAmount(v ?? 0)}
         />
         {entry.auto ? (
           <span className="small scaled nowrap" title={`Auto-scaled to ${amount.toFixed(2)} ${unit}`}>

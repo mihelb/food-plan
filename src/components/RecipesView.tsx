@@ -6,6 +6,7 @@ import { newId } from '../lib/storage';
 import { FoodSearch } from './FoodSearch';
 import { Modal } from './Modal';
 import { NutrientTable } from './NutrientTable';
+import { DecimalInput } from './DecimalInput';
 
 export function RecipesView({ state, mutate }: { state: AppState; mutate: Mutate }) {
   const list = Object.values(state.recipes).sort((a, b) => a.name.localeCompare(b.name));
@@ -101,13 +102,7 @@ function RecipeEditor({ recipe, state, mutate, onDeleted, onDuplicated }: Editor
         <input className="title-input" value={recipe.name} onChange={(e) => edit((r) => (r.name = e.target.value))} aria-label="Recipe name" />
         <label className="inline">
           Servings
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={recipe.servings}
-            onChange={(e) => edit((r) => (r.servings = Math.max(1, Number(e.target.value) || 1)))}
-          />
+          <DecimalInput required min={1} value={recipe.servings} onChange={(v) => edit((r) => (r.servings = v ?? 1))} />
         </label>
         <button onClick={duplicate}>Duplicate</button>
         <button className="danger" onClick={remove}>
@@ -138,14 +133,7 @@ function RecipeEditor({ recipe, state, mutate, onDeleted, onDuplicated }: Editor
                   {food && <div className="small muted">{food.detail}</div>}
                 </td>
                 <td>
-                  <input
-                    type="number"
-                    min={0}
-                    step="any"
-                    className="qty"
-                    value={ing.quantity}
-                    onChange={(e) => edit((r) => (r.ingredients[i].quantity = Math.max(0, Number(e.target.value))))}
-                  />
+                  <DecimalInput required className="qty" value={ing.quantity} onChange={(v) => edit((r) => (r.ingredients[i].quantity = v ?? 0))} />
                 </td>
                 <td>
                   <select

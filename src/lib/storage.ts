@@ -67,6 +67,8 @@ export function normalizeState(raw: unknown): AppState {
       ? (f.portions as Portion[]).filter((p) => isObj(p) && typeof p.label === 'string' && num(p.grams) !== undefined)
       : [],
     pricePer100g: num(f.pricePer100g),
+    packagePrice: num(f.packagePrice),
+    packageGrams: num(f.packageGrams),
   }));
 
   const recipes = cleanRecord<Recipe>(s.recipes, (r, id) => ({

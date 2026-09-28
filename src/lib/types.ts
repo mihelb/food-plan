@@ -23,6 +23,9 @@ export interface Food {
   portions: Portion[];
   /** Price per 100 g in the profile currency; undefined = unknown. */
   pricePer100g?: number;
+  /** Optional package price and weight the price per 100 g was calculated from. */
+  packagePrice?: number;
+  packageGrams?: number;
 }
 
 export interface Ingredient {
