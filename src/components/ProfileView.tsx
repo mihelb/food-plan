@@ -61,6 +61,22 @@ export function ProfileView({ state, mutate }: { state: AppState; mutate: Mutate
       </section>
 
       <section className="panel">
+        <h2>Prices</h2>
+        <label className="check">
+          <input type="checkbox" checked={p.showPrices} onChange={(e) => set('showPrices', e.target.checked)} />
+          Show prices (per serving in recipes, per day and per week in the plan)
+        </label>
+        <label className="inline">
+          Currency
+          <input className="short" value={p.currency} onChange={(e) => set('currency', e.target.value)} maxLength={4} />
+        </label>
+        <p className="small muted">
+          Enter prices per 100 g under Foods and per capsule/tablet under Supplements. Items without a price show "–" and
+          totals are marked "≥" because they are then a lower bound.
+        </p>
+      </section>
+
+      <section className="panel">
         <h2>About you</h2>
         <div className="form-grid">
           <label>

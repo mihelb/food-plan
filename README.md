@@ -36,6 +36,10 @@ minerals over the week.
 - **Supplements** with per-dose nutrients. They count towards the charts.
 - Defaults are the US National Academies RDA/AI values for your sex and age, and you can override any
   micronutrient target.
+- **Prices** (optional): enter a price per 100 g for foods (or let it be worked out from a package's
+  price and weight) and a price per capsule/tablet for supplements. Recipes show the price per serving,
+  and the week plan shows the cost per day and per week. Items without a price show "–" and make totals
+  a lower bound ("≥"). You can turn prices on or off and set the currency under Profile & targets.
 - Light / dark / auto (follow desktop) theme, set under Profile & targets.
 - JSON export/import for backups.
 

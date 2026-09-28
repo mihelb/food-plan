@@ -21,6 +21,8 @@ export interface Food {
   /** Nutrients per 100 g. */
   per100g: NutrientMap;
   portions: Portion[];
+  /** Price per 100 g in the profile currency; undefined = unknown. */
+  pricePer100g?: number;
 }
 
 export interface Ingredient {
@@ -46,6 +48,8 @@ export interface Supplement {
   doseLabel: string;
   /** Nutrients per dose. */
   perDose: NutrientMap;
+  /** Price per dose (capsule, tablet…); undefined = unknown. */
+  pricePerDose?: number;
 }
 
 export const SLOTS = [
@@ -95,6 +99,10 @@ export interface Profile {
   usdaApiKey: string;
   /** Colour theme; 'system' follows the desktop setting. */
   theme: 'system' | 'light' | 'dark';
+  /** Show prices per serving, day and week. */
+  showPrices: boolean;
+  /** Currency symbol used for prices. */
+  currency: string;
 }
 
 export interface AppState {

@@ -1,4 +1,4 @@
-import type { AppState, Profile } from './types';
+import type { AppState, DayPlan, Food, Ingredient, NutrientMap, PlanEntry, Portion, Profile, Recipe, SlotKey, Supplement } from './types';
 
 export const DEFAULT_PROFILE: Profile = {
   name: '',
@@ -12,25 +12,97 @@ export const DEFAULT_PROFILE: Profile = {
   microOverrides: {},
   usdaApiKey: 'DEMO_KEY',
   theme: 'system',
+  showPrices: true,
+  currency: '€',
 };
 
 export function emptyState(): AppState {
   return { version: 1, profile: { ...DEFAULT_PROFILE }, foods: {}, recipes: {}, supplements: {}, days: {} };
 }
 
-/** Fill in missing fields so older or hand-edited files keep working. */
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+const str = (v: unknown, fallback: string): string => (typeof v === 'string' ? v : fallback);
+
+/** Keep only finite numeric nutrient values. */
+function cleanNutrients(v: unknown): NutrientMap {
+  const out: NutrientMap = {};
+  if (!isObj(v)) return out;
+  for (const [k, x] of Object.entries(v)) if (num(x) !== undefined) out[k as keyof NutrientMap] = x as number;
+  return out;
+}
+
+/** Keep only well-formed records of a collection, giving each its key as id. */
+function cleanRecord<T>(v: unknown, fix: (x: Record<string, unknown>, id: string) => T | null): Record<string, T> {
+  const out: Record<string, T> = {};
+  if (!isObj(v)) return out;
+  for (const [id, x] of Object.entries(v)) {
+    if (!isObj(x)) continue;
+    const fixed = fix(x, id);
+    if (fixed) out[id] = fixed;
+  }
+  return out;
+}
+
+/**
+ * Fill in missing fields so files from older versions (or edited by hand) always load.
+ * New optional fields (e.g. prices) simply stay undefined for existing entries.
+ */
 export function normalizeState(raw: unknown): AppState {
   const base = emptyState();
-  if (!raw || typeof raw !== 'object') return base;
+  if (!isObj(raw)) return base;
   const s = raw as Partial<AppState>;
-  return {
-    version: 1,
-    profile: { ...base.profile, ...(s.profile ?? {}), microOverrides: { ...(s.profile?.microOverrides ?? {}) } },
-    foods: s.foods ?? {},
-    recipes: s.recipes ?? {},
-    supplements: s.supplements ?? {},
-    days: s.days ?? {},
-  };
+  const profile: Profile = { ...base.profile, ...(isObj(s.profile) ? s.profile : {}) };
+  profile.microOverrides = cleanNutrients(profile.microOverrides);
+  if (typeof profile.showPrices !== 'boolean') profile.showPrices = base.profile.showPrices;
+  profile.currency = str(profile.currency, base.profile.currency);
+
+  const foods = cleanRecord<Food>(s.foods, (f, id) => ({
+    ...(f as unknown as Food),
+    id,
+    name: str(f.name, 'Unnamed food'),
+    source: f.source === 'usda' || f.source === 'off' ? f.source : 'custom',
+    per100g: cleanNutrients(f.per100g),
+    portions: Array.isArray(f.portions)
+      ? (f.portions as Portion[]).filter((p) => isObj(p) && typeof p.label === 'string' && num(p.grams) !== undefined)
+      : [],
+    pricePer100g: num(f.pricePer100g),
+  }));
+
+  const recipes = cleanRecord<Recipe>(s.recipes, (r, id) => ({
+    ...(r as unknown as Recipe),
+    id,
+    name: str(r.name, 'Unnamed recipe'),
+    servings: num(r.servings) && (r.servings as number) > 0 ? (r.servings as number) : 1,
+    ingredients: Array.isArray(r.ingredients)
+      ? (r.ingredients as Ingredient[])
+          .filter((i) => isObj(i) && typeof i.foodId === 'string')
+          .map((i) => ({ foodId: i.foodId, quantity: num(i.quantity) ?? 0, portion: typeof i.portion === 'string' ? i.portion : null }))
+      : [],
+  }));
+
+  const supplements = cleanRecord<Supplement>(s.supplements, (x, id) => ({
+    ...(x as unknown as Supplement),
+    id,
+    name: str(x.name, 'Unnamed supplement'),
+    doseLabel: str(x.doseLabel, 'dose'),
+    perDose: cleanNutrients(x.perDose),
+    pricePerDose: num(x.pricePerDose),
+  }));
+
+  const days = cleanRecord<DayPlan>(s.days, (d) => {
+    const slots: DayPlan['slots'] = {};
+    if (isObj(d.slots))
+      for (const [slot, list] of Object.entries(d.slots)) {
+        if (!Array.isArray(list)) continue;
+        slots[slot as SlotKey] = (list as PlanEntry[])
+          .filter((e) => isObj(e) && (e.kind === 'recipe' || e.kind === 'supplement') && typeof e.refId === 'string')
+          .map((e) => ({ ...e, id: typeof e.id === 'string' ? e.id : newId(), amount: num(e.amount) ?? 1 }));
+      }
+    return { slots, activeKcal: num(d.activeKcal) };
+  });
+
+  return { version: 1, profile, foods, recipes, supplements, days };
 }
 
 interface Bridge {

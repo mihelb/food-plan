@@ -6,6 +6,11 @@ import { addDays, formatDay, fromIso, today, weekDates, weekStart } from '../lib
 import {
   addInto,
   activeKcalFor,
+  addCost,
+  costTitle,
+  formatCost,
+  recipeCostPerServing,
+  type Cost,
   entryName,
   ingredientGrams,
   recipePerServing,
@@ -128,6 +133,9 @@ export function Planner({ state, mutate, goTo }: Props) {
     ),
   };
 
+  const { showPrices, currency } = state.profile;
+  const weekCost = weekDays.reduce<Cost>((acc, d) => addCost(acc, d.cost), { value: 0, missing: 0 });
+
   const sel = results[selectedDate];
   const selLabel = formatDay(selectedDate);
 
@@ -140,6 +148,7 @@ export function Planner({ state, mutate, goTo }: Props) {
         <div className="drag-list">
           {recipes.map((r) => {
             const kcal = recipePerServing(r, state.foods).kcal ?? 0;
+            const cost = recipeCostPerServing(r, state.foods);
             return (
               <div
                 key={r.id}
@@ -148,7 +157,9 @@ export function Planner({ state, mutate, goTo }: Props) {
                 onDragStart={(e) => e.dataTransfer.setData(MIME, JSON.stringify({ type: 'new', kind: 'recipe', refId: r.id } satisfies DragPayload))}
               >
                 <span className="name">{r.name}</span>
-                <span className="muted small">{Math.round(kcal)} kcal/serving</span>
+                <span className="muted small" title={showPrices ? costTitle(cost) : undefined}>
+                  {Math.round(kcal)} kcal/serving{showPrices && ` · ${formatCost(cost, currency)}`}
+                </span>
               </div>
             );
           })}
@@ -168,7 +179,10 @@ export function Planner({ state, mutate, goTo }: Props) {
               onDragStart={(e) => e.dataTransfer.setData(MIME, JSON.stringify({ type: 'new', kind: 'supplement', refId: s.id } satisfies DragPayload))}
             >
               <span className="name">{s.name}</span>
-              <span className="muted small">{s.doseLabel}</span>
+              <span className="muted small">
+                {s.doseLabel}
+                {showPrices && ` · ${formatCost(s.pricePerDose === undefined ? { value: 0, missing: 1 } : { value: s.pricePerDose, missing: 0 }, currency)}`}
+              </span>
             </div>
           ))}
           {supplements.length === 0 && (
@@ -192,6 +206,11 @@ export function Planner({ state, mutate, goTo }: Props) {
           </button>
           <button onClick={() => { setStart(weekStart(today())); setSelected(today()); }}>This week</button>
           <span className="spacer" />
+          {showPrices && (
+            <span className="week-cost" title={costTitle(weekCost)}>
+              Week cost <strong>{formatCost(weekCost, currency)}</strong>
+            </span>
+          )}
           <button onClick={copyPreviousWeek}>Copy previous week</button>
           <button onClick={clearWeek}>Clear week</button>
         </div>
@@ -240,6 +259,11 @@ export function Planner({ state, mutate, goTo }: Props) {
                     <span className="muted" title="Includes active kcal from the previous day"> ↺</span>
                   )}
                 </div>
+                {showPrices && r.entries.length > 0 && (
+                  <div className="small muted" title={costTitle(r.cost)}>
+                    Cost {formatCost(r.cost, currency)}
+                  </div>
+                )}
                 <div className="mini-track" aria-hidden>
                   <div
                     className={`mini-fill ${pct > 1.1 ? 'status-over' : pct >= 0.95 ? 'status-good' : pct >= 0.8 ? 'status-warning' : 'status-critical'}`}
@@ -450,6 +474,11 @@ function EntryDetail({ state, resolved, onClose }: { state: AppState; resolved: 
       {supp && (
         <p>
           {amount} × {supp.doseLabel}
+        </p>
+      )}
+      {state.profile.showPrices && (
+        <p title={costTitle(resolved.cost)}>
+          Cost: <strong>{formatCost(resolved.cost, state.profile.currency)}</strong>
         </p>
       )}
       <NutrientTable values={nutrients} />

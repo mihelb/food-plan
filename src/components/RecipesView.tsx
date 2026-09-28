@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Mutate } from '../App';
 import type { AppState, Recipe } from '../lib/types';
-import { ingredientGrams, recipePerServing } from '../lib/calc';
+import { costTitle, formatCost, ingredientGrams, recipeCostPerServing, recipeCostTotal, recipePerServing } from '../lib/calc';
 import { newId } from '../lib/storage';
 import { FoodSearch } from './FoodSearch';
 import { Modal } from './Modal';
@@ -31,7 +31,10 @@ export function RecipesView({ state, mutate }: { state: AppState; mutate: Mutate
             <li key={r.id}>
               <button className={r.id === selectedId ? 'on' : ''} onClick={() => setSelectedId(r.id)}>
                 <span>{r.name}</span>
-                <span className="small muted">{Math.round(recipePerServing(r, state.foods).kcal ?? 0)} kcal</span>
+                <span className="small muted">
+                  {Math.round(recipePerServing(r, state.foods).kcal ?? 0)} kcal
+                  {state.profile.showPrices && ` · ${formatCost(recipeCostPerServing(r, state.foods), state.profile.currency)}`}
+                </span>
               </button>
             </li>
           ))}
@@ -65,6 +68,9 @@ interface EditorProps {
 function RecipeEditor({ recipe, state, mutate, onDeleted, onDuplicated }: EditorProps) {
   const [adding, setAdding] = useState(false);
   const per = recipePerServing(recipe, state.foods);
+  const { showPrices, currency } = state.profile;
+  const costPer = recipeCostPerServing(recipe, state.foods);
+  const costTotal = recipeCostTotal(recipe, state.foods);
   const edit = (fn: (r: Recipe) => void) =>
     mutate((s) => {
       fn(s.recipes[recipe.id]);
@@ -117,6 +123,7 @@ function RecipeEditor({ recipe, state, mutate, onDeleted, onDuplicated }: Editor
             <th>Unit</th>
             <th className="num">Grams</th>
             <th className="num">kcal</th>
+            {showPrices && <th className="num">Price</th>}
             <th />
           </tr>
         </thead>
@@ -165,6 +172,15 @@ function RecipeEditor({ recipe, state, mutate, onDeleted, onDuplicated }: Editor
                 </td>
                 <td className="num">{Math.round(grams)}</td>
                 <td className="num">{Math.round(((food?.per100g.kcal ?? 0) * grams) / 100)}</td>
+                {showPrices && (
+                  <td className="num" title={food?.pricePer100g === undefined ? 'No price — set it under Foods' : undefined}>
+                    {food?.pricePer100g === undefined ? (
+                      <span className="muted">–</span>
+                    ) : (
+                      formatCost({ value: (food.pricePer100g * grams) / 100, missing: 0 }, currency)
+                    )}
+                  </td>
+                )}
                 <td>
                   <button className="icon" aria-label="Remove ingredient" onClick={() => edit((r) => r.ingredients.splice(i, 1))}>
                     ×
@@ -191,6 +207,14 @@ function RecipeEditor({ recipe, state, mutate, onDeleted, onDuplicated }: Editor
         <Stat label="Carbs" value={`${(per.carbs ?? 0).toFixed(1)} g`} />
         <Stat label="Fat" value={`${(per.fat ?? 0).toFixed(1)} g`} />
         <Stat label="Fiber" value={`${(per.fiber ?? 0).toFixed(1)} g`} />
+        {showPrices && (
+          <Stat
+            label="Price"
+            value={formatCost(costPer, currency)}
+            hint={`${formatCost(costTotal, currency)} whole recipe${costPer.missing > 0 ? ` · ${costPer.missing} without price` : ''}`}
+            title={costTitle(costPer)}
+          />
+        )}
       </div>
       <NutrientTable values={per} />
 
@@ -210,11 +234,12 @@ function RecipeEditor({ recipe, state, mutate, onDeleted, onDuplicated }: Editor
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, hint, title }: { label: string; value: string; hint?: string; title?: string }) {
   return (
-    <div className="stat">
+    <div className="stat" title={title}>
       <div className="small muted">{label}</div>
       <div className="stat-value">{value}</div>
+      {hint && <div className="small muted">{hint}</div>}
     </div>
   );
 }

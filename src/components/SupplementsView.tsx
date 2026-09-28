@@ -5,6 +5,7 @@ import { newId } from '../lib/storage';
 import { NutrientEditor } from './NutrientEditor';
 
 export function SupplementsView({ state, mutate }: { state: AppState; mutate: Mutate }) {
+  const { showPrices, currency } = state.profile;
   const list = Object.values(state.supplements).sort((a, b) => a.name.localeCompare(b.name));
   const [selectedId, setSelectedId] = useState<string | null>(list[0]?.id ?? null);
   const supp = selectedId ? state.supplements[selectedId] : undefined;
@@ -36,7 +37,14 @@ export function SupplementsView({ state, mutate }: { state: AppState; mutate: Mu
       </aside>
       <section className="detail-pane">
         {supp ? (
-          <SupplementEditor key={supp.id} supp={supp} mutate={mutate} onDeleted={() => setSelectedId(null)} />
+          <SupplementEditor
+            key={supp.id}
+            supp={supp}
+            mutate={mutate}
+            onDeleted={() => setSelectedId(null)}
+            showPrices={showPrices}
+            currency={currency}
+          />
         ) : (
           <div className="empty">
             <h2>Supplements</h2>
@@ -54,7 +62,15 @@ export function SupplementsView({ state, mutate }: { state: AppState; mutate: Mu
   );
 }
 
-function SupplementEditor({ supp, mutate, onDeleted }: { supp: Supplement; mutate: Mutate; onDeleted: () => void }) {
+interface EditorProps {
+  supp: Supplement;
+  mutate: Mutate;
+  onDeleted: () => void;
+  showPrices: boolean;
+  currency: string;
+}
+
+function SupplementEditor({ supp, mutate, onDeleted, showPrices, currency }: EditorProps) {
   const edit = (fn: (s: Supplement) => void) =>
     mutate((s) => {
       fn(s.supplements[supp.id]);
@@ -83,6 +99,22 @@ function SupplementEditor({ supp, mutate, onDeleted }: { supp: Supplement; mutat
           Delete
         </button>
       </div>
+      {showPrices && (
+        <label className="inline price-row">
+          Price per {supp.doseLabel || 'dose'}
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={supp.pricePerDose ?? ''}
+            placeholder="unknown"
+            onChange={(e) =>
+              edit((s) => (s.pricePerDose = e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))))
+            }
+          />
+          {currency}
+        </label>
+      )}
       <h3>Nutrients per dose</h3>
       <p className="small muted">Enter what one dose contains, as printed on the label. Leave everything else empty.</p>
       <NutrientEditor values={supp.perDose} onChange={(v) => edit((s) => (s.perDose = v))} />

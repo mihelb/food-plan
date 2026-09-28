@@ -34,6 +34,44 @@ export function recipePerServing(recipe: Recipe, foods: Record<string, Food>): N
   return addInto({}, total, 1 / Math.max(recipe.servings, 1e-9));
 }
 
+export interface Cost {
+  /** Sum of all known prices. */
+  value: number;
+  /** Number of ingredients / items without a price (value is then a lower bound). */
+  missing: number;
+}
+
+export function addCost(a: Cost, b: Cost, factor = 1): Cost {
+  return { value: a.value + b.value * factor, missing: a.missing + b.missing };
+}
+
+/** Cost of the whole recipe (all servings). */
+export function recipeCostTotal(recipe: Recipe, foods: Record<string, Food>): Cost {
+  let cost: Cost = { value: 0, missing: 0 };
+  for (const ing of recipe.ingredients) {
+    const food = foods[ing.foodId];
+    if (!food) continue;
+    if (food.pricePer100g === undefined) cost.missing++;
+    else cost = addCost(cost, { value: (food.pricePer100g * ingredientGrams(ing, food)) / 100, missing: 0 });
+  }
+  return cost;
+}
+
+export function recipeCostPerServing(recipe: Recipe, foods: Record<string, Food>): Cost {
+  const total = recipeCostTotal(recipe, foods);
+  return { value: total.value / Math.max(recipe.servings, 1e-9), missing: total.missing };
+}
+
+/** Cost of one unit of a plan entry (one serving / one dose). */
+export function entryUnitCost(entry: PlanEntry, state: Pick<AppState, 'recipes' | 'supplements' | 'foods'>): Cost {
+  if (entry.kind === 'recipe') {
+    const r = state.recipes[entry.refId];
+    return r ? recipeCostPerServing(r, state.foods) : { value: 0, missing: 0 };
+  }
+  const price = state.supplements[entry.refId]?.pricePerDose;
+  return price === undefined ? { value: 0, missing: 1 } : { value: price, missing: 0 };
+}
+
 /** Nutrients for one unit of a plan entry (one serving / one dose). */
 export function entryUnitNutrients(entry: PlanEntry, state: Pick<AppState, 'recipes' | 'supplements' | 'foods'>): NutrientMap {
   if (entry.kind === 'recipe') {
@@ -87,12 +125,14 @@ export interface ResolvedEntry {
   /** Effective amount after auto-scaling. */
   amount: number;
   nutrients: NutrientMap;
+  cost: Cost;
 }
 
 export interface DayResult {
   entries: ResolvedEntry[];
   totals: NutrientMap;
   targets: MacroTargets;
+  cost: Cost;
   /** Scale factor applied to auto entries (1 if none). */
   autoFactor: number;
   /** Set when auto-scaling could not hit the target. */
@@ -129,13 +169,17 @@ export function resolveDay(date: string, state: AppState): DayResult {
   }
 
   const totals: NutrientMap = {};
+  let cost: Cost = { value: 0, missing: 0 };
   const entries: ResolvedEntry[] = raw.map((r) => {
     const amount = r.entry.auto ? r.entry.amount * autoFactor : r.entry.amount;
     const nutrients = addInto({}, r.unit, amount);
     addInto(totals, nutrients);
-    return { entry: r.entry, slot: r.slot, amount, nutrients };
+    const entryCost = entryUnitCost(r.entry, state);
+    const scaled = { value: entryCost.value * amount, missing: entryCost.missing };
+    cost = addCost(cost, scaled);
+    return { entry: r.entry, slot: r.slot, amount, nutrients, cost: scaled };
   });
-  return { entries, totals, targets, autoFactor, warning };
+  return { entries, totals, targets, cost, autoFactor, warning };
 }
 
 export interface MicroStatus {
@@ -174,4 +218,15 @@ export function weekMicroStatus(
 /** Nutrient keys with values, in display order. */
 export function orderedKeys(map: NutrientMap): NutrientKey[] {
   return NUTRIENTS.map((n) => n.key).filter((k) => map[k] !== undefined);
+}
+
+/** "2.35 €", "≥ 2.35 €" when some prices are missing, "–" when nothing is priced. */
+export function formatCost(cost: Cost, currency: string): string {
+  if (cost.value === 0 && cost.missing > 0) return '–';
+  const v = cost.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${cost.missing > 0 ? '≥ ' : ''}${v} ${currency}`;
+}
+
+export function costTitle(cost: Cost): string | undefined {
+  return cost.missing > 0 ? `${cost.missing} item(s) without a price — add prices under Foods / Supplements` : undefined;
 }

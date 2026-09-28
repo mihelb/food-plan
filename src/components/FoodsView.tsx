@@ -123,6 +123,8 @@ function FoodEditor({ food, state, mutate, onDeleted }: { food: Food; state: App
         {usedIn.length > 0 && ` · used in ${usedIn.length} recipe(s)`}
       </p>
 
+      {state.profile.showPrices && <PriceEditor food={food} currency={state.profile.currency} onChange={(v) => edit((f) => (f.pricePer100g = v))} />}
+
       <h3>Portions</h3>
       <table className="table compact">
         <tbody>
@@ -160,5 +162,46 @@ function FoodEditor({ food, state, mutate, onDeleted }: { food: Food; state: App
       <p className="small muted">Leave a field empty if unknown — it then counts as 0 and the planner flags it.</p>
       <NutrientEditor values={food.per100g} onChange={(v) => edit((f) => (f.per100g = v))} />
     </div>
+  );
+}
+
+/** Price per 100 g, with a helper to work it out from a package price and size. */
+function PriceEditor({ food, currency, onChange }: { food: Food; currency: string; onChange: (v: number | undefined) => void }) {
+  const [pkgPrice, setPkgPrice] = useState('');
+  const [pkgGrams, setPkgGrams] = useState('');
+  const derived = Number(pkgPrice) > 0 && Number(pkgGrams) > 0 ? (Number(pkgPrice) / Number(pkgGrams)) * 100 : null;
+  return (
+    <>
+      <h3>Price</h3>
+      <div className="price-row">
+        <label className="inline">
+          Price per 100 g
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={food.pricePer100g ?? ''}
+            placeholder="unknown"
+            onChange={(e) => onChange(e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)))}
+          />
+          {currency}
+        </label>
+        <span className="muted small">or from a package:</span>
+        <input type="number" min={0} step="0.01" className="short" placeholder="price" value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} />
+        <span className="small muted">{currency} for</span>
+        <input type="number" min={0} step="any" className="short" placeholder="grams" value={pkgGrams} onChange={(e) => setPkgGrams(e.target.value)} />
+        <span className="small muted">g</span>
+        <button
+          disabled={derived === null}
+          onClick={() => {
+            onChange(Math.round(derived! * 1000) / 1000);
+            setPkgPrice('');
+            setPkgGrams('');
+          }}
+        >
+          Use {derived !== null ? `${derived.toFixed(2)} ${currency}/100 g` : ''}
+        </button>
+      </div>
+    </>
   );
 }
